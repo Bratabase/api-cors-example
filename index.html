@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bratabase API CORS test</title>
+</head>
+<style>
+    .main {
+        display: flex;
+    }
+    .main section {
+        flex: 1 0 auto;
+        width: 50%;
+    }
+</style>
+<body>
+<h1>Bratabase API Cors example</h1>
+<p>Shows how to use the API from a browser client.</p>
+<p>Keep in mind that this demo uses the unauthenticated API so will be bound
+to the <a href="http://developers.bratabase.com/rate-limit/">base rate limit</a>.
+In your project make sure to use your client's token on all requests.</p>
+<div class="main">
+<section>
+<h2>Brands</h2>
+    <p>Showing top 20 brands with most bras</p>
+<ul id="brands"></ul>
+</section>
+<section id="brand-detail" style="display: none;">
+    <h3><a class="brand-name"></a> models</h3>
+    <p>Showing top 20 models with most bras</p>
+    <ol class="brand-models"></ol>
+</section>
+</div>
+</body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+<script>
+    var API = "https://api.bratabase.com/";
+    var brandsUrl = API + 'brands/';
+    var brandsElm = $('#brands');
+    var brandDetail = $('#brand-detail');
+
+    function getCollection(endpoint) {
+        return $.getJSON(endpoint).then(function(resp){
+            return resp.collection
+        })
+    }
+
+    function getEntity(entityUrl) {
+        return $.getJSON(entityUrl)
+    }
+
+    function brandNode(brand){
+        var node = $('<li>');
+        var link = $('<a>')
+                .attr('href', '#')
+                .data('apiUrl', brand.href)
+                .text(brand.name);
+        node.append(link);
+        return node;
+    }
+
+    function modelNode(model){
+        var node = $('<li>');
+        var link = $('<a>')
+                .attr('href', model.bratabase_url).
+                text(model.name);
+        node.append(link);
+        return node;
+    }
+
+    function loadBrand(entity){
+        brandDetail.hide();
+        brandDetail.find('.brand-name')
+                .text(entity.body.name)
+                .attr('href', entity.body.bratabase_url);
+        var modelsList = brandDetail.find('.brand-models');
+        modelsList.empty();
+        getCollection(entity.links.models).then(function(models){
+            modelsList.append(models.map(modelNode));
+            brandDetail.show();
+        });
+    }
+
+    function init(){
+        brandsElm.on('click', 'a', function(evt){
+            var brandLink = evt.target;
+            evt.stopPropagation();
+            evt.preventDefault();
+            var brandDetailUrl = $(brandLink).data('apiUrl');
+            getEntity(brandDetailUrl).then(loadBrand);
+        });
+
+        getCollection(brandsUrl).then(function(brands){
+            return brandsElm.append(brands.map(brandNode));
+        });
+    }
+
+    init();
+</script>
+</html>
