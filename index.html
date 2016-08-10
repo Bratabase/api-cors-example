@@ -3,22 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <title>Bratabase API CORS test</title>
+    <style>
+        .main {
+            display: flex;
+        }
+        .main section {
+            flex: 1 0 auto;
+            width: 50%;
+        }
+    </style>
 </head>
-<style>
-    .main {
-        display: flex;
-    }
-    .main section {
-        flex: 1 0 auto;
-        width: 50%;
-    }
-</style>
 <body>
-<h1>Bratabase API Cors example</h1>
-<p>Shows how to use the API from a browser client.</p>
+<h1>Bratabase API CORS example</h1>
+<p>Shows how to use the API from a browser client. <a href="https://github.com/Bratabase/api-cors-example">Get the latest source</a>.</p>
 <p>Keep in mind that this demo uses the unauthenticated API so will be bound
 to the <a href="http://developers.bratabase.com/rate-limit/">base rate limit</a>.
 In your project make sure to use your client's token on all requests.</p>
+<hr/>
+
+<p>
+This example lists the <a href="http://developers.bratabase.com/brands-endpoint/">
+top 20 (first API page) brands</a> from <a href="http://www.bratabase.com/">Bratabase.com</a>
+consuming <a href="http://developers.bratabase.com/" title="Bratabase API">its API</a> using
+the <a href="https://github.com/Bratabase/bratabase-js/" title="Javascript client for Bratabase API">
+Javascript client</a> and then navigates to show each of their
+<a href="http://developers.bratabase.com/models-endpoint/">top 20 most popular
+models.</a>
+</p>
+
+</hr/>
 <div class="main">
 <section>
 <h2>Brands</h2>
@@ -31,70 +44,74 @@ In your project make sure to use your client's token on all requests.</p>
     <ol class="brand-models"></ol>
 </section>
 </div>
-</body>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+<script src="https://rawgit.com/Bratabase/bratabase-js/master/bratabase.js"></script>
 <script>
-    var API = "https://api.bratabase.com/";
-    var brandsUrl = API + 'brands/';
-    var brandsElm = $('#brands');
-    var brandDetail = $('#brand-detail');
+var $ = function(sel) {
+    return document.querySelectorAll(sel);
+}
 
-    function getCollection(endpoint) {
-        return $.getJSON(endpoint).then(function(resp){
-            return resp.collection
-        })
-    }
+var brandsElm = $('#brands')[0];
+var brandDetail = $('#brand-detail')[0];
+var brandModels = $('#brand-detail .brand-models')[0];
+var brandName = $('#brand-detail .brand-name')[0];
 
-    function getEntity(entityUrl) {
-        return $.getJSON(entityUrl)
-    }
+var api = BratabaseAPI();
 
-    function brandNode(brand){
-        var node = $('<li>');
-        var link = $('<a>')
-                .attr('href', '#')
-                .data('apiUrl', brand.href)
-                .text(brand.name);
-        node.append(link);
-        return node;
-    }
-
-    function modelNode(model){
-        var node = $('<li>');
-        var link = $('<a>')
-                .attr('href', model.bratabase_url).
-                text(model.name);
-        node.append(link);
-        return node;
-    }
-
-    function loadBrand(entity){
-        brandDetail.hide();
-        brandDetail.find('.brand-name')
-                .text(entity.body.name)
-                .attr('href', entity.body.bratabase_url);
-        var modelsList = brandDetail.find('.brand-models');
-        modelsList.empty();
-        getCollection(entity.links.models).then(function(models){
-            modelsList.append(models.map(modelNode));
-            brandDetail.show();
+brandsElm.addEventListener('click', function(evt){
+    var clickedBrand = evt.target;
+    if (clickedBrand.tagName === 'A') {
+        var brandApiUrl = clickedBrand.dataset.apiUrl;
+        api.get(brandApiUrl).then(function(brand) {
+            var items = document.createDocumentFragment();
+            brandDetail.style.display = 'none';
+            brandName.innerHTML = brand.body.name;
+            brandName.href = brand.body.bratabase_url;
+            brandModels.innerHTML = '';
+            brand.links.models().then(function(models){
+                models.collection.forEach(function(modelTup){
+                    addModelsToFragment(items, modelTup);
+                });
+                brandModels.appendChild(items.cloneNode(true));
+                brandDetail.style.display = 'block';
+            });
         });
+        evt.stopPropagation();
     }
+})
 
-    function init(){
-        brandsElm.on('click', 'a', function(evt){
-            var brandLink = evt.target;
-            evt.stopPropagation();
-            evt.preventDefault();
-            var brandDetailUrl = $(brandLink).data('apiUrl');
-            getEntity(brandDetailUrl).then(loadBrand);
-        });
+function addBrandToFragment(fragment, brandTup) {
+    var node = document.createElement('li');
+    var link = document.createElement('a');
+    link.textContent = brandTup.name;
+    link.href = '#';
+    link.dataset.apiUrl = brandTup.href;
+    node.appendChild(link);
+    fragment.appendChild(node);
+}
 
-        getCollection(brandsUrl).then(function(brands){
-            return brandsElm.append(brands.map(brandNode));
-        });
-    }
+function addModelsToFragment(fragment, modelTup) {
+    var node = document.createElement('li');
+    var link = document.createElement('a');
+    link.textContent = modelTup.name;
+    link.href = modelTup.bratabase_url;
+    node.appendChild(link);
+    fragment.appendChild(node);
+}
 
-    init();
+function loadBrands(brands) {
+    brandDetail.style.display = 'none';
+    var items = document.createDocumentFragment();
+    var nodes = brands.collection.map(function(brandTup){
+        addBrandToFragment(items, brandTup)
+    })
+    brandsElm.appendChild(items.cloneNode(true));
+    brandDetail.style.display = 'block';
+}
+
+api.root().then(function(root){
+    root.links.brands().then(loadBrands);
+})
 </script>
+</body>
 </html>
