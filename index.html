@@ -45,7 +45,7 @@ models.</a>
 </div>
 <p><a href="https://github.com/Bratabase/api-cors-example/blob/master/index.html">You are invited to peek at the code and learn how this works.</a></p>
 
-<script src="https://rawgit.com/Bratabase/bratabase-js/master/bratabase.js"></script>
+<script src="http://localhost:5000/bratabase.js"></script>
 <script>
 var $ = function(sel) {
     return document.querySelectorAll(sel);
@@ -57,6 +57,10 @@ var brandModels = $('#brand-detail .brand-models')[0];
 var brandName = $('#brand-detail .brand-name')[0];
 
 var api = BratabaseAPI();
+
+function handleError(err) {
+    alert(err.responseJSON.message)
+}
 
 brandsElm.addEventListener('click', function(evt){
     var clickedBrand = evt.target;
@@ -71,11 +75,11 @@ brandsElm.addEventListener('click', function(evt){
             brand.links.models().then(function(models){
                 models.collection.forEach(function(modelTup){
                     addModelsToFragment(items, modelTup);
-                });
+                }, handleError);
                 brandModels.appendChild(items.cloneNode(true));
                 brandDetail.style.display = 'block';
             });
-        });
+        }, handleError);
         evt.stopPropagation();
     }
 })
@@ -110,7 +114,7 @@ function loadBrands(brands) {
 }
 
 api.root().then(function(root){
-    root.links.brands().then(loadBrands);
+    root.links.brands().then(loadBrands, handleError);
 })
 </script>
 </body>
